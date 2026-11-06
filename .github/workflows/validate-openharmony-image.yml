@@ -21,7 +21,7 @@ on:
       runtime_ref:
         description: runtime-ohos branch to build with the image
         required: false
-        default: pr/ohos-ci-leg
+        default: feature/openharmony
 
 permissions:
   contents: read
@@ -71,7 +71,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: springmin/runtime-ohos
-          ref: ${{ inputs.runtime_ref || 'pr/ohos-ci-leg' }}
+          ref: ${{ inputs.runtime_ref || 'feature/openharmony' }}
           path: runtime-src
 
       - name: Build runtime native libraries with the image
