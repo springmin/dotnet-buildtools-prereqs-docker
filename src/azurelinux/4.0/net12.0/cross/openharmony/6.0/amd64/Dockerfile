@@ -31,7 +31,9 @@ LABEL org.opencontainers.image.title="OpenHarmony cross-compilation image" \
 
 RUN tdnf install -y cmake ninja-build perl-core && tdnf clean all
 
-COPY --from=builder /opt/ohos-sdk /opt/ohos-sdk
+# Only the native SDK component is required by the cross build. Copying the
+# whole SDK root would also carry the host/language SDK zips and docs.
+COPY --from=builder /opt/ohos-sdk/linux/native /opt/ohos-sdk/linux/native
 COPY --from=builder /opt/ohos-assets /opt/ohos-assets
 COPY --from=builder /opt/ohos-toolchain /opt/ohos-toolchain
 

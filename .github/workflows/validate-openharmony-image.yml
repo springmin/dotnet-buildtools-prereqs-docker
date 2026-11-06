@@ -18,13 +18,17 @@ on:
         description: ICU tarball URL
         required: false
         default: https://github.com/unicode-org/icu/releases/download/release-75-1/icu4c-75_1-src.tgz
+      runtime_ref:
+        description: runtime-ohos branch to build with the image
+        required: false
+        default: pr/ohos-ci-leg
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build and smoke-test
+    name: Build image and runtime
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -54,3 +58,27 @@ jobs:
             test -f /opt/ohos-assets/openssl/lib/libssl.a &&
             test -f /opt/ohos-assets/icu/lib/libicuuc.a &&
             echo OK'
+
+      - name: Record image size
+        run: |
+          docker image inspect --format 'image_size_bytes={{.Size}}' ohos-test
+          docker run --rm ohos-test du -sh \
+            /opt/ohos-sdk/linux/native \
+            /opt/ohos-assets \
+            /opt/ohos-toolchain
+
+      - name: Check out runtime source
+        uses: actions/checkout@v4
+        with:
+          repository: springmin/runtime-ohos
+          ref: ${{ inputs.runtime_ref || 'pr/ohos-ci-leg' }}
+          path: runtime-src
+
+      - name: Build runtime native libraries with the image
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/runtime-src:/work" \
+            -w /work \
+            -e CI=true \
+            ohos-test \
+            bash -c './build.sh clr.runtime+libs.native -os openharmony -arch arm64 -cross -c Release -cmakeargs "$OHOS_CMAKE_ARGS"'

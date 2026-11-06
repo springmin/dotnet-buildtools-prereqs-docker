@@ -38,7 +38,9 @@ echo "== SDK =="
 curl "${CURL_OPTS[@]}" "$OHOS_SDK_URL" -o "$WORK/sdk.tar.gz"
 echo "$OHOS_SDK_SHA  $WORK/sdk.tar.gz" | sha256sum -c -
 tar -xzf "$WORK/sdk.tar.gz" -C "$SDK_ROOT" --no-same-owner
-rm -rf "$SDK_ROOT/windows"
+# The image is an aarch64 Linux cross toolchain only. Keep the native SDK
+# component and discard the host/other-language SDK payloads.
+rm -rf "$SDK_ROOT/windows" "$SDK_ROOT/ohos"
 cd "$OHOS_NDK_HOME"
 for archive in native-linux-x64-*.zip; do
     # python3 -m zipfile drops the symlinks stored in the SDK; recreate them.
@@ -65,7 +67,13 @@ PY
 done
 find native/llvm/bin -type f -exec chmod +x {} +
 find native/build-tools -type f -exec chmod +x {} + 2>/dev/null || true
-rm -f native-linux-x64-*.zip
+# None of the remaining SDK payloads are needed by the aarch64 native build.
+rm -f "$SDK_ROOT/linux"/*.zip
+rm -rf native/docs
+rm -rf native/llvm/python3
+rm -f native/llvm/bin/python
+rm -rf native/llvm/bin/lldb*
+rm -rf native/llvm/lib/liblldb*
 test -f "$OHOS_NDK_HOME/native/build/cmake/ohos.toolchain.cmake"
 
 NDK_BIN="$OHOS_NDK_HOME/native/llvm/bin"
@@ -121,6 +129,11 @@ AR="$TOOLCHAIN/aarch64-linux-ohos-ar" RANLIB="$TOOLCHAIN/aarch64-linux-ohos-ranl
 make -j"$(nproc)"
 make install
 install -m 0644 "$WORK/icu/LICENSE" "$OHOS_ASSETS/icu/LICENSE"
+
+# The cross build only consumes the headers and static archives. Remove
+# command-line tools, docs, and package metadata installed by default.
+rm -rf "$OHOS_ASSETS/openssl/share" "$OHOS_ASSETS/openssl/lib/pkgconfig"
+rm -rf "$OHOS_ASSETS/icu/bin" "$OHOS_ASSETS/icu/share" "$OHOS_ASSETS/icu/lib/icu"
 
 echo "== Verify =="
 test -f "$OHOS_ASSETS/icu/include/unicode/ucurr.h"
