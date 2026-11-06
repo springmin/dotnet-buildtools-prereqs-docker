@@ -19,6 +19,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Pull base image
+        run: docker pull "$BASE_IMAGE"
+
       - name: Build image
         working-directory: src/azurelinux/4.0/net12.0/cross/openharmony/6.0/amd64
         run: |
@@ -42,7 +45,7 @@ jobs:
           docker history --no-trunc --format '{{.ID}}\t{{.Size}}\t{{.CreatedBy}}' ohos-inspect > /tmp/final-history.txt
           cat /tmp/final-history.txt
           echo '== final history size sum =='
-          awk -F '\t' '{print $2}' /tmp/final-history.txt | sed 's/GB/*1024*1024*1024/;s/MB/*1024*1024/;s/kB/*1024/;s/B//' | bc 2>/dev/null | awk '{s+=$1} END {printf "history_approx_bytes=%d\n",s}' || true
+          grep -E 'GB|MB|kB|B' /tmp/final-history.txt | head -3 || true
 
       - name: Docker save sizes
         run: |
