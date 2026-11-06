@@ -74,6 +74,49 @@ rm -rf native/llvm/python3
 rm -rf native/llvm/bin/python
 rm -rf native/llvm/bin/lldb*
 rm -rf native/llvm/lib/liblldb*
+
+# Keep the compiler, linker, archiver, binutils and symbolizer used by the
+# cross build; drop the analysis, debug, LTO-IR and non-ELF driver payloads.
+rm -f native/llvm/bin/clang-check \
+      native/llvm/bin/clang-tidy \
+      native/llvm/bin/clangd \
+      native/llvm/bin/clang-format \
+      native/llvm/bin/clang-apply-replacements \
+      native/llvm/bin/clang-change-namespace \
+      native/llvm/bin/clang-include-fixer \
+      native/llvm/bin/clang-query \
+      native/llvm/bin/clang-rename \
+      native/llvm/bin/opt \
+      native/llvm/bin/llc \
+      native/llvm/bin/dsymutil \
+      native/llvm/bin/llvm-dwp \
+      native/llvm/bin/llvm-cfi-verify \
+      native/llvm/bin/llvm-cov \
+      native/llvm/bin/llvm-dwarfdump \
+      native/llvm/bin/llvm-rc \
+      native/llvm/bin/llvm-lib \
+      native/llvm/bin/llvm-as \
+      native/llvm/bin/llvm-dis \
+      native/llvm/bin/llvm-link \
+      native/llvm/bin/llvm-modextract \
+      native/llvm/bin/llvm-profdata \
+      native/llvm/bin/llvm-size \
+      native/llvm/bin/llvm-strings \
+      native/llvm/bin/llvm-readobj \
+      native/llvm/bin/yaml2obj \
+      native/llvm/bin/sancov \
+      native/llvm/bin/sanstats \
+      native/llvm/bin/scan-build \
+      native/llvm/bin/scan-view \
+      native/llvm/bin/FileCheck \
+      native/llvm/bin/count \
+      native/llvm/bin/not \
+      native/llvm/bin/lld-link \
+      native/llvm/bin/ld64.lld
+# The image targets aarch64 only; other target runtimes and libclang's stable
+# C API are not used by the compiler driver.
+rm -rf native/llvm/lib/arm-linux-ohos native/llvm/lib/x86_64-linux-ohos
+rm -f native/llvm/lib/libclang.so
 test -f "$OHOS_NDK_HOME/native/build/cmake/ohos.toolchain.cmake"
 
 NDK_BIN="$OHOS_NDK_HOME/native/llvm/bin"
