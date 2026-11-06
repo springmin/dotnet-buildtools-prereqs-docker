@@ -21,15 +21,15 @@ on:
       runtime_ref:
         description: runtime-ohos branch to build with the image
         required: false
-        default: validate/ohos-image-runtime
+        default: feature/ohos-cross-runtime
       sdk_ref:
         description: sdk-ohos branch to build with the image
         required: false
-        default: feature/openharmony
+        default: feature/ohos-cross-sdk
       aspnetcore_ref:
         description: aspnetcore-ohos branch to build with the image
         required: false
-        default: feature/openharmony
+        default: feature/ohos-cross-compile
 
 permissions:
   contents: read
@@ -79,14 +79,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: springmin/runtime-ohos
-          ref: ${{ inputs.runtime_ref || 'validate/ohos-image-runtime' }}
+          ref: ${{ inputs.runtime_ref || 'feature/ohos-cross-runtime' }}
           path: runtime-src
 
       - name: Check out aspnetcore source
         uses: actions/checkout@v4
         with:
           repository: springmin/aspnetcore-ohos
-          ref: ${{ inputs.aspnetcore_ref || 'feature/openharmony' }}
+          ref: ${{ inputs.aspnetcore_ref || 'feature/ohos-cross-compile' }}
           path: aspnet-src
           submodules: recursive
 
@@ -94,7 +94,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: springmin/sdk-ohos
-          ref: ${{ inputs.sdk_ref || 'feature/openharmony' }}
+          ref: ${{ inputs.sdk_ref || 'feature/ohos-cross-sdk' }}
           path: sdk-src
 
       - name: Seed host .NET SDKs
@@ -132,5 +132,5 @@ jobs:
             -e SDK_REPO=/work/sdk \
             -e BUILDID=20260901.109 \
             ohos-test \
-            bash -c 'bash /work/sdk/eng/ohos-install/build/build-ohos-all.sh --arch=arm64 --rid=openharmony-arm64 --config=Release --buildid=20260901.109'
+            bash -c 'bash /work/sdk/documentation/ohos-install/build/build-ohos-all.sh --arch=arm64 --rid=openharmony-arm64 --config=Release --buildid=20260901.109'
           test -n "$(find "$GITHUB_WORKSPACE/sdk-src/artifacts/packages/Release/Shipping" -maxdepth 1 -name 'dotnet-sdk-*-openharmony-arm64.tar.gz' -print -quit)"
