@@ -30,13 +30,18 @@ on:
         description: aspnetcore-ohos branch to build with the image
         required: false
         default: feature/openharmony
+      run_sdk:
+        description: Also run the full SDK build (slow)
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build image, runtime and SDK
+    name: Build image and runtime
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -83,6 +88,7 @@ jobs:
           path: runtime-src
 
       - name: Check out aspnetcore source
+        if: ${{ inputs.run_sdk == true }}
         uses: actions/checkout@v4
         with:
           repository: springmin/aspnetcore-ohos
@@ -91,6 +97,7 @@ jobs:
           submodules: recursive
 
       - name: Check out SDK source
+        if: ${{ inputs.run_sdk == true }}
         uses: actions/checkout@v4
         with:
           repository: springmin/sdk-ohos
@@ -98,6 +105,7 @@ jobs:
           path: sdk-src
 
       - name: Seed host .NET SDKs
+        if: ${{ inputs.run_sdk == true }}
         run: |
           curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
           chmod +x /tmp/dotnet-install.sh
@@ -119,6 +127,7 @@ jobs:
             bash -c './build.sh clr.runtime+libs.native -os openharmony -arch arm64 -cross -c Release -cmakeargs "$OHOS_CMAKE_ARGS"'
 
       - name: Build full SDK with the image
+        if: ${{ inputs.run_sdk == true }}
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE/runtime-src:/work/runtime" \

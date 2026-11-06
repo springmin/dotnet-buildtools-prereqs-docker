@@ -117,6 +117,15 @@ rm -f native/llvm/bin/clang-check \
 # C API are not used by the compiler driver.
 rm -rf native/llvm/lib/arm-linux-ohos native/llvm/lib/x86_64-linux-ohos
 rm -f native/llvm/lib/libclang.so
+
+# The final image provides CMake and the compiler from the base/build stages.
+# The SDK's bundled CMake/LLVM headers and module files are not used by the
+# runtime or SDK builds, and duplicate the system packages.
+rm -rf native/build-tools/cmake
+rm -rf native/llvm/include
+rm -rf native/llvm/share
+rm -rf native/llvm/lib/cmake
+rm -rf native/llvm/libexec
 test -f "$OHOS_NDK_HOME/native/build/cmake/ohos.toolchain.cmake"
 
 NDK_BIN="$OHOS_NDK_HOME/native/llvm/bin"
