@@ -22,13 +22,21 @@ on:
         description: runtime-ohos branch to build with the image
         required: false
         default: validate/ohos-image-runtime
+      sdk_ref:
+        description: sdk-ohos branch to build with the image
+        required: false
+        default: feature/openharmony
+      aspnetcore_ref:
+        description: aspnetcore-ohos branch to build with the image
+        required: false
+        default: feature/openharmony
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build image and runtime
+    name: Build image, runtime and SDK
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -74,6 +82,33 @@ jobs:
           ref: ${{ inputs.runtime_ref || 'validate/ohos-image-runtime' }}
           path: runtime-src
 
+      - name: Check out aspnetcore source
+        uses: actions/checkout@v4
+        with:
+          repository: springmin/aspnetcore-ohos
+          ref: ${{ inputs.aspnetcore_ref || 'feature/openharmony' }}
+          path: aspnet-src
+          submodules: recursive
+
+      - name: Check out SDK source
+        uses: actions/checkout@v4
+        with:
+          repository: springmin/sdk-ohos
+          ref: ${{ inputs.sdk_ref || 'feature/openharmony' }}
+          path: sdk-src
+
+      - name: Seed host .NET SDKs
+        run: |
+          curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          chmod +x /tmp/dotnet-install.sh
+          for d in runtime-src aspnet-src sdk-src; do
+            /tmp/dotnet-install.sh --version 11.0.100-preview.6.26359.118 --install-dir "$GITHUB_WORKSPACE/$d/.dotnet" --no-path
+          done
+          for d in runtime-src aspnet-src sdk-src; do
+            /tmp/dotnet-install.sh --version 11.0.100-rc.1.26420.103 --install-dir "$GITHUB_WORKSPACE/$d/.dotnet" --no-path
+            /tmp/dotnet-install.sh --version 11.0.100-rc.1.26425.128 --install-dir "$GITHUB_WORKSPACE/$d/.dotnet" --no-path
+          done
+
       - name: Build runtime native libraries with the image
         run: |
           docker run --rm \
@@ -82,3 +117,20 @@ jobs:
             -e CI=true \
             ohos-test \
             bash -c './build.sh clr.runtime+libs.native -os openharmony -arch arm64 -cross -c Release -cmakeargs "$OHOS_CMAKE_ARGS"'
+
+      - name: Build full SDK with the image
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/runtime-src:/work/runtime" \
+            -v "$GITHUB_WORKSPACE/aspnet-src:/work/aspnetcore" \
+            -v "$GITHUB_WORKSPACE/sdk-src:/work/sdk" \
+            -e OHOS_NDK_HOME=/opt/ohos-sdk/linux \
+            -e OPENSSL_DIR=/opt/ohos-assets/openssl \
+            -e ICU_DIR=/opt/ohos-assets/icu \
+            -e RUNTIME_REPO=/work/runtime \
+            -e ASCORE_REPO=/work/aspnetcore \
+            -e SDK_REPO=/work/sdk \
+            -e BUILDID=20260901.109 \
+            ohos-test \
+            bash -c 'bash /work/sdk/eng/ohos-install/build/build-ohos-all.sh --arch=arm64 --rid=openharmony-arm64 --config=Release --buildid=20260901.109'
+          test -n "$(find "$GITHUB_WORKSPACE/sdk-src/artifacts/packages/Release/Shipping" -maxdepth 1 -name 'dotnet-sdk-*-openharmony-arm64.tar.gz' -print -quit)"

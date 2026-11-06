@@ -29,7 +29,7 @@ LABEL org.opencontainers.image.title="OpenHarmony cross-compilation image" \
       org.opencontainers.image.version="6.0.0.47" \
       org.opencontainers.image.licenses="Apache-2.0"
 
-RUN tdnf install -y cmake ninja-build perl-core && tdnf clean all
+RUN tdnf install -y cmake ninja-build perl-core git && tdnf clean all
 
 # Only the native SDK component is required by the cross build. Copying the
 # whole SDK root would also carry the host/language SDK zips and docs.
