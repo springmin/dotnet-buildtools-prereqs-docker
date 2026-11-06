@@ -71,7 +71,7 @@ find native/build-tools -type f -exec chmod +x {} + 2>/dev/null || true
 rm -f "$SDK_ROOT/linux"/*.zip
 rm -rf native/docs
 rm -rf native/llvm/python3
-rm -f native/llvm/bin/python
+rm -rf native/llvm/bin/python
 rm -rf native/llvm/bin/lldb*
 rm -rf native/llvm/lib/liblldb*
 test -f "$OHOS_NDK_HOME/native/build/cmake/ohos.toolchain.cmake"
