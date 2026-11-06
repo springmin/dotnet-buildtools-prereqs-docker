@@ -84,7 +84,7 @@ jobs:
           path: runtime-src
 
       - name: Check out SDK source
-        if: ${{ inputs.run_sdk == true }}
+        if: ${{ github.event_name == 'push' || inputs.run_sdk == true }}
         uses: actions/checkout@v4
         with:
           repository: springmin/sdk-ohos
@@ -92,7 +92,7 @@ jobs:
           path: sdk-src
 
       - name: Seed host .NET SDKs
-        if: ${{ inputs.run_sdk == true }}
+        if: ${{ github.event_name == 'push' || inputs.run_sdk == true }}
         run: |
           curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
           chmod +x /tmp/dotnet-install.sh
@@ -114,7 +114,7 @@ jobs:
             bash -c './build.sh clr.runtime+libs.native -os openharmony -arch arm64 -cross -c Release -cmakeargs "$OHOS_CMAKE_ARGS"'
 
       - name: Build SDK only with the image
-        if: ${{ inputs.run_sdk == true }}
+        if: ${{ github.event_name == 'push' || inputs.run_sdk == true }}
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE/sdk-src:/work/sdk" \
