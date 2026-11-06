@@ -1,6 +1,9 @@
 name: Inspect OpenHarmony image size
 
 on:
+  push:
+    branches:
+      - validate/1786-inspect
   workflow_dispatch:
 
 permissions:
