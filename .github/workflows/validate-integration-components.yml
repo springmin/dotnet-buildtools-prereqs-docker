@@ -106,6 +106,7 @@ jobs:
           repository: springmin/aspnetcore-ohos
           ref: feature/openharmony
           path: aspnet-src
+          submodules: recursive
 
       - name: Seed ASP.NET Core bootstrap
         if: matrix.target == 'aspnetcore'
