@@ -1,0 +1,100 @@
+name: Validate integrated OpenHarmony SDK and ASP.NET Core
+
+on:
+  push:
+    branches:
+      - validate/integration-components
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [sdk, aspnetcore]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build OpenHarmony image
+        working-directory: src/azurelinux/4.0/net12.0/cross/openharmony/6.0/amd64
+        run: |
+          docker build --progress=plain \
+            --build-arg OHOS_SDK_URL=https://repo.huaweicloud.com/openharmony/os/6.0-Release/ohos-sdk-windows_linux-public.tar.gz \
+            --build-arg OPENSSL_URL=https://github.com/openssl/openssl/releases/download/openssl-3.3.1/openssl-3.3.1.tar.gz \
+            --build-arg ICU_URL=https://github.com/unicode-org/icu/releases/download/release-75-1/icu4c-75_1-src.tgz \
+            -t ohos-integration ./
+
+      - name: Check out SDK source
+        if: matrix.target == 'sdk'
+        uses: actions/checkout@v4
+        with:
+          repository: springmin/sdk-ohos
+          ref: feature/openharmony
+          path: sdk-src
+
+      - name: Check out SDK build helper
+        if: matrix.target == 'sdk'
+        uses: actions/checkout@v4
+        with:
+          repository: springmin/sdk-ohos
+          ref: validate/ohos-image-sdk-only
+          path: sdk-tools
+
+      - name: Seed SDK bootstrap
+        if: matrix.target == 'sdk'
+        run: |
+          curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          chmod +x /tmp/dotnet-install.sh
+          for v in 11.0.100-preview.6.26359.118 11.0.100-rc.1.26420.103 11.0.100-rc.1.26425.128; do
+            /tmp/dotnet-install.sh --version "$v" --install-dir "$GITHUB_WORKSPACE/sdk-src/.dotnet" --no-path
+          done
+
+      - name: Build integrated SDK
+        if: matrix.target == 'sdk'
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/sdk-src:/work/sdk" \
+            -v "$GITHUB_WORKSPACE/sdk-tools:/work/sdk-tools" \
+            -e SDK_REPO=/work/sdk \
+            -e OHOS_NDK_HOME=/opt/ohos-sdk/linux \
+            -e OPENSSL_DIR=/opt/ohos-assets/openssl \
+            -e ICU_DIR=/opt/ohos-assets/icu \
+            ohos-integration \
+            bash -c '
+              mkdir -p /work/sdk/eng/ohos-install/build
+              cp /work/sdk-tools/eng/ohos-install/build/build-ohos-sdk-image.sh \
+                 /work/sdk/eng/ohos-install/build/
+              bash /work/sdk/eng/ohos-install/build/build-ohos-sdk-image.sh'
+          test -x "$GITHUB_WORKSPACE/sdk-src/artifacts/bin/redist/Release/dotnet/dotnet"
+
+      - name: Check out ASP.NET Core source
+        if: matrix.target == 'aspnetcore'
+        uses: actions/checkout@v4
+        with:
+          repository: springmin/aspnetcore-ohos
+          ref: feature/openharmony
+          path: aspnet-src
+
+      - name: Seed ASP.NET Core bootstrap
+        if: matrix.target == 'aspnetcore'
+        run: |
+          curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          chmod +x /tmp/dotnet-install.sh
+          /tmp/dotnet-install.sh --version 11.0.100-rc.1.26425.128 \
+            --install-dir "$GITHUB_WORKSPACE/aspnet-src/.dotnet" --no-path
+
+      - name: Build integrated ASP.NET Core
+        if: matrix.target == 'aspnetcore'
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/aspnet-src:/work" \
+            -w /work \
+            -e CI=true \
+            ohos-integration \
+            bash -c './eng/build.sh -c Release --no-build-nodejs'
