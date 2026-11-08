@@ -4,19 +4,45 @@ on:
   push:
     branches:
       - validate/integration-components
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Component to validate
+        type: choice
+        options:
+          - all
+          - sdk
+          - aspnetcore
+        default: all
 
 permissions:
   contents: read
 
 jobs:
+  setup:
+    name: Select validation targets
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - name: Select targets
+        id: set
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          case "$TARGET" in
+            sdk|aspnetcore) echo "matrix={\"target\":[\"$TARGET\"]}" >> "$GITHUB_OUTPUT" ;;
+            *) echo 'matrix={"target":["sdk","aspnetcore"]}' >> "$GITHUB_OUTPUT" ;;
+          esac
+
   validate:
     name: Validate ${{ matrix.target }}
+    needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
       fail-fast: false
-      matrix:
-        target: [sdk, aspnetcore]
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -86,15 +112,42 @@ jobs:
         run: |
           curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
           chmod +x /tmp/dotnet-install.sh
-          /tmp/dotnet-install.sh --version 11.0.100-rc.1.26425.128 \
+          /tmp/dotnet-install.sh --version 11.0.100-rc.3.26522.148 \
             --install-dir "$GITHUB_WORKSPACE/aspnet-src/.dotnet" --no-path
+
+      - name: Prepare OpenHarmony RID graph
+        if: matrix.target == 'aspnetcore'
+        run: |
+          set -euo pipefail
+          sdk_dir="$GITHUB_WORKSPACE/aspnet-src/.dotnet/sdk/11.0.100-rc.3.26522.148"
+          mkdir -p "$GITHUB_WORKSPACE/ohos-rid"
+          python3 - "$sdk_dir/PortableRuntimeIdentifierGraph.json" "$GITHUB_WORKSPACE/ohos-rid/PortableRuntimeIdentifierGraph.json" <<'PY'
+          import json
+          import sys
+
+          source, dest = sys.argv[1], sys.argv[2]
+          with open(source, encoding="utf-8") as stream:
+              graph = json.load(stream)
+
+          runtimes = graph["runtimes"]
+          runtimes["openharmony"] = {"#import": ["any"]}
+          runtimes["openharmony-arm"] = {"#import": ["openharmony"]}
+          runtimes["openharmony-arm64"] = {"#import": ["openharmony"]}
+          runtimes["openharmony-x64"] = {"#import": ["openharmony"]}
+          graph["runtimes"] = dict(sorted(runtimes.items()))
+
+          with open(dest, "w", encoding="utf-8") as stream:
+              json.dump(graph, stream, indent=2)
+              stream.write("\n")
+          PY
 
       - name: Build integrated ASP.NET Core
         if: matrix.target == 'aspnetcore'
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE/aspnet-src:/work" \
+            -v "$GITHUB_WORKSPACE/ohos-rid:/work/ohos-rid:ro" \
             -w /work \
             -e CI=true \
             ohos-integration \
-            bash -c './eng/build.sh -c Release --no-build-nodejs'
+            bash -c './eng/build.sh -c Release --no-build-nodejs -p:RuntimeIdentifierGraphPath=/work/ohos-rid/PortableRuntimeIdentifierGraph.json -p:BundledToolTargetRuntimeIdentifiers=linux-x64 -p:NativeAotSupported=false'
